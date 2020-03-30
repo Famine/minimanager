@@ -100,30 +100,12 @@ function dologin ()
 			</td>
 		</tr>
 		<tr align="right">
-			<td>'.$lang_login['username'].' : <input type="text" name="user" size="24" maxlength="16" /></td>
-		</tr>
-		<tr align="right">
-			<td>'.$lang_login['password'].' : <input type="password" name="login_pass" size="24" maxlength="40" /></td>
+			<td>Login to the website is currently disabled.  Please login using your game client.</td>
 		</tr>';
 
 $result = $sqlr->query('SELECT id, name FROM realmlist LIMIT 10');
 
-if ($sqlr->num_rows($result) > 1 && (count($server) > 1) && (count($characters_db) > 1))
-{
-	$output .= '
-	<tr align="right">
-		<td>'.$lang_login['select_realm'].' :
-			<select name="realm">';
-				while ($realm = $sqlr->fetch_assoc($result))
-				if(isset($server[$realm['id']]))
-				$output .= '
-				<option value="'.$realm['id'].'">'.htmlentities($realm['name']).'</option>';
-				$output .= '
-			</select>
-		</td>
-	</tr>';
-}
-else
+
 $output .= '
 <input type="hidden" name="realm" value="'.$sqlr->result($result, 0, 'id').'" />';
 $output .= '
@@ -132,10 +114,7 @@ $output .= '
 	</td>
 </tr>
 <tr align="right">
-	<td>'.$lang_login['remember_me'].' : <input type="checkbox" name="remember" value="1"';
-if ($remember_me_checked)
-$output .= ' checked="checked"';
-$output .= ' /></td>
+	
 </tr>
 <tr>
 <td>
@@ -144,13 +123,10 @@ $output .= ' /></td>
 <tr align="right">
 <td width="290">
 <input type="submit" value="" style="display:none" />';
-makebutton($lang_login['not_registrated'], 'register.php" type="wrn', 130);
-makebutton($lang_login['login'], 'javascript:dologin()" type="def', 130);
 $output .= '
 </td>
 </tr>
 <tr align="center">
-	<td><a href="register.php?action=pass_recovery">'.$lang_login['pass_recovery'].'</a></td>
 </tr>
 <tr>
 <td>

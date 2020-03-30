@@ -1,5 +1,8 @@
 ﻿<?php
 
+require_once __DIR__ . '/vendor/autoload.php';
+use Laizerox\Wowemu\SRP\UserClient;
+
 require_once("header.php");
 
 
@@ -143,6 +146,14 @@ $output .= "
 
 //#####################################################################################################
 // DO REGISTER
+//
+// Variables passed by Form (_POST):
+//	pass - SHA1 encrypted password
+//	pass1 - plaintext password
+//	pass2 - "0"
+//	email
+//	username
+//
 //#####################################################################################################
 function doregister()
 {
@@ -152,125 +163,32 @@ function doregister()
 			$send_mail_on_creation, $create_acc_locked, $from_mail, $defaultoption, $require_account_verify,
 			$mailer_type, $smtp_cfg, $title;
 
-	if (($_POST['security_code']) != ($_SESSION['security_code']))
-	{
-		redirect("register.php?err=13");
-	}
-
 	if ( empty($_POST['pass']) || empty($_POST['email']) || empty($_POST['username']) )
 	{
 		redirect("register.php?err=1");
 	}
 
-	if ($disable_acc_creation)
-		redirect("register.php?err=4");
-
-	$last_ip =  (getenv('HTTP_X_FORWARDED_FOR')) ? getenv('HTTP_X_FORWARDED_FOR') : getenv('REMOTE_ADDR');
-
-	if (sizeof($valid_ip_mask))
-	{
-		$qFlag = 0;
-		$user_ip_mask = explode('.', $last_ip);
-
-		foreach($valid_ip_mask as $mask)
-		{
-			$vmask = explode('.', $mask);
-			$v_count = 4;
-			$i = 0;
-			foreach($vmask as $range)
-			{
-				$vmask_h = explode('-', $range);
-				if (isset($vmask_h[1]))
-				{
-					if (($vmask_h[0]>=$user_ip_mask[$i]) && ($vmask_h[1]<=$user_ip_mask[$i]))
-						$v_count--;
-				}
-				else
-				{
-					if ($vmask_h[0] == $user_ip_mask[$i])
-						$v_count--;
-				}
-			$i++;
-			}
-			if (!$v_count)
-			{
-				$qFlag++;
-				break;
-			}
-		}
-	if (!$qFlag)
-		redirect("register.php?err=9&usr=$last_ip");
-	}
-
 	$sqlr = new SQL;
 	$sqlr->connect($realm_db['addr'], $realm_db['user'], $realm_db['pass'], $realm_db['name']);
 
+	//Set username and password variables WE SHOULD USE PASS1 FOR S/V
 	$user_name = $sqlr->quote_smart(trim($_POST['username']));
 	$pass = $sqlr->quote_smart($_POST['pass']);
 	$pass1 = $sqlr->quote_smart($_POST['pass1']);
 
-	//make sure username/pass at least 4 chars long and less than max
+	//make sure username is at least 4 chars long and less than max
 	if ((strlen($user_name) < 4) || (strlen($user_name) > 15))
 	{
 		$sqlr->close();
 		redirect("register.php?err=5");
 	}
-
-	require_once("libs/valid_lib.php");
-
-	//make sure it doesnt contain non english chars.
-	if (!valid_alphabetic($user_name))
-	{
-		$sqlr->close();
-		redirect("register.php?err=6");
-	}
-
-	//make sure the mail is valid mail format
-	$mail = $sqlr->quote_smart(trim($_POST['email']));
-	if ((!valid_email($mail))||(strlen($mail) > 224))
-	{
-		$sqlr->close();
-		redirect("register.php?err=7");
-	}
-
-	$per_ip = ($limit_acc_per_ip) ? "OR last_ip='$last_ip'" : "";
-
-	$result = $sqlr->query("
-		SELECT ip 
-		FROM ip_banned 
-		WHERE ip = '$last_ip'");
-
-	//IP is in ban list
-	if ($sqlr->num_rows($result))
-	{
-		$sqlr->close();
-		redirect("register.php?err=8&usr=$last_ip");
-	}
-
-	//Email check
-	$result = $sqlr->query("
-		SELECT email 
-		FROM account 
-		WHERE email='$mail' $per_ip");
-
-	if ($sqlr->num_rows($result))
-	{
-		$sqlr->close();
-		redirect("register.php?err=14");
-	}
-  
+ 
 	//Username check
 	$result = $sqlr->query("
 		SELECT username 
 		FROM account
-		WHERE username='$user_name' $per_ip");
+		WHERE username='$user_name'");
 		
-	if ($sqlr->num_rows($result))
-	{
-		$sqlr->close();
-		redirect("register.php?err=3");
-	}
-
 	//there is already someone with same account name
 	if ($sqlr->num_rows($result))
 	{
@@ -279,121 +197,38 @@ function doregister()
 	}
 	else
 	{
-		if ($expansion_select)
-			$expansion = (isset($_POST['expansion'])) ? $sqlr->quote_smart($_POST['expansion']) : 0;
-			else
-				$expansion = $defaultoption;
 
-		if ($require_account_verify) 
-		{
-			$sqlm = new SQL;
-			$sqlm->connect($mmfpm_db['addr'], $mmfpm_db['user'], $mmfpm_db['pass'], $mmfpm_db['name']);
+    /* Create your v and s values. */
+	$client = new UserClient($user_name);
+    $salt = $client->generateSalt();
+    $verifier = $client->generateVerifier($pass1);
 
-			$result2 = $sqlm->query("
-				SELECT *
-				FROM mm_account_verification
-				WHERE username = '$user_name' OR email = '$mail'");
+/*		This is the correct values list. for $result below
 
-			if ($sqlm->num_rows($result2) > 0)
-			{
-				redirect("register.php?err=15");
-			}
-			else 
-			{
-				$client_ip = $_SERVER['REMOTE_ADDR'];
-				$authkey = sha1($client_ip . time());
-				$result = $sqlm->query("
-					INSERT INTO mm_account_verification 
-						(username,
-						sha_pass_hash,
-						gmlevel,email,
-						joindate,
-						last_ip,
-						failed_logins,
-						locked,
-						last_login,
-						active_realm_id,
-						expansion,
-						authkey)
-					VALUES
-						(UPPER('$user_name'),
-						'$pass',
-						'0',
-						'$mail',
-						now(),
-						'$last_ip',
-						'0',
-						'$create_acc_locked',
-						'NULL',
-						'0',
-						'$expansion',
-						'$authkey')");
+			VALUES 
+				(UPPER('$user_name'),
+				'$verifier',
+				'$salt',
+				0,
+				'$mail',
+				now(),
+				0,
+				$create_acc_locked,
+				NULL,
+				0,
+				$expansion)");
+*/				
 
-				$sqlm->close();
+		$expansion = $defaultoption;
 
-require_once './libs/mailer/class.phpmailer.php';
-
-				$mailer = new PHPMailer();
-				$mailer->Mailer = $mailer_type;
-				if ($mailer_type == "smtp")
-				{
-					$mailer->Host = $smtp_cfg['host'];
-					$mailer->Port = $smtp_cfg['port'];
-					if($smtp_cfg['user'] != '')
-					{
-						$mailer->SMTPAuth  = true;
-						$mailer->Username  = $smtp_cfg['user'];
-						$mailer->Password  =  $smtp_cfg['pass'];
-					}
-				}
-
-				$file_name = "core/mail_templates/verify_mail.tpl";
-				$fh = fopen($file_name, 'r');
-				$subject = fgets($fh, 4096);
-				$body = fread($fh, filesize($file_name));
-				fclose($fh);
-
-				$subject = str_replace("<title>", $title, $subject);
-
-				$body = str_replace("\n", "<br />", $body);
-				$body = str_replace("\r", " ", $body);
-				$body = str_replace("<base_url>", $_SERVER['SERVER_NAME'], $body);
-				$body = str_replace("<username>", $user_name, $body);
-				$body = str_replace("<password>", $pass1, $body);
-				$body = str_replace("<authkey>", $authkey, $body);
-	
-				$mailer->WordWrap = 50;
-				$mailer->From = $from_mail;
-				$mailer->FromName = "$title Admin";
-				$mailer->Subject = $subject;
-				$mailer->IsHTML(true);
-				$mailer->Body = $body;
-				$mailer->AddAddress($mail);
-
-				if(!$mailer->Send())
-				{
-					$mailer->ClearAddresses();
-						redirect("register.php?&err=11&usr=".$mailer->ErrorInfo);
-				} 
-				else
-				{
-					$mailer->ClearAddresses();
-					redirect("register.php?&err=16");
-				}
-
-			}
-unset($mailer);
-		}
-		else
-		{
 		$result = $sqlr->query("
 			INSERT INTO account 
 				(username,
-				sha_pass_hash,
+				v,
+				s,
 				gmlevel,
 				email,
 				joindate,
-				last_ip,
 				failed_logins,
 				locked,
 				last_login,
@@ -401,106 +236,26 @@ unset($mailer);
 				expansion)
 			VALUES 
 				(UPPER('$user_name'),
-				'$pass',
+				'$verifier',
+				'$salt',
 				0,
 				'$mail',
 				now(),
-				'$last_ip',
 				0,
 				$create_acc_locked,
 				NULL,
 				0,
 				$expansion)");
 				
-			if ($invited_by) 
-			{
-			
-				$user_id = $sqlr->result($sqlr->query('
-					SELECT id
-					FROM account
-					WHERE username = \''.$user_name.'\''), 'id');
 
-				$referredby = $_POST['referredby'];
-
-				$referred_by = $sqlr->result($sqlr->query('
-					SELECT id 
-					FROM account 
-					WHERE username = \''.$referredby.'\''), 'id');
-
-				$sqlm = new SQL;
-				$sqlm->connect($mmfpm_db['addr'], $mmfpm_db['user'], $mmfpm_db['pass'], $mmfpm_db['name']);
-
-				if ($referred_by == NULL);
-				else
-				{
-					if ($referred_by == $user_id);
-					else
-					{
-						$sqlm->query('
-							INSERT INTO mm_point_system_invites
-								(PlayersAccount, InviterAccount) 
-							VALUES
-								(\''.$user_id.'\', \''.$referred_by.'\')');
-					}
-				}
-					redirect("register.php?err=17");
-
-				$sqlm->close();
-			}
-		}
+	}
 
 		$sqlr->close();
-
-		setcookie ("terms", "", time() - 3600);
-
-		if ($send_mail_on_creation)
-		{
-
-require_once './libs/mailer/class.phpmailer.php';
-
-			$mailer = new PHPMailer();
-			$mailer->Mailer = $mailer_type;
-			if ($mailer_type == "smtp")
-			{
-				$mailer->Host = $smtp_cfg['host'];
-				$mailer->Port = $smtp_cfg['port'];
-				if($smtp_cfg['user'] != '')
-				{
-					$mailer->SMTPAuth  = true;
-					$mailer->Username  = $smtp_cfg['user'];
-					$mailer->Password  =  $smtp_cfg['pass'];
-				}
-			}
-
-			$file_name = "core/mail_templates/mail_welcome.tpl";
-			$fh = fopen($file_name, 'r');
-			$subject = fgets($fh, 4096);
-			$body = fread($fh, filesize($file_name));
-			fclose($fh);
-
-			$subject = str_replace("<title>", $title, $subject);
-
-			$body = str_replace("\n", "<br />", $body);
-			$body = str_replace("\r", " ", $body);
-			$body = str_replace("<base_url>", $_SERVER['SERVER_NAME'], $body);
-			$body = str_replace("<username>", $user_name, $body);
-			$body = str_replace("<password>", $pass1, $body);
-
-			$mailer->WordWrap = 50;
-			$mailer->From = $from_mail;
-			$mailer->FromName = "$title Admin";
-			$mailer->Subject = $subject;
-			$mailer->IsHTML(true);
-			$mailer->Body = $body;
-			$mailer->AddAddress($mail);
-			$mailer->Send();
-			$mailer->ClearAddresses();
-
-		}
-unset($mailer);
 	
 	if ($result) redirect("login.php?error=6");
-	}
+
+
+	
 }
 
 
