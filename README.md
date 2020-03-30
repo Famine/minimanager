@@ -1,5 +1,5 @@
 # minimanager
-MiniManager 2020 for CMangos
+MiniManager 2020 for CMaNGOS
 
 MiniManager 2020 Prerequisites:
 1 - Apache webserver 
