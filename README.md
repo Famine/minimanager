@@ -1,6 +1,5 @@
-# minimanager
-MiniManager 2020 for CMaNGOS  
-
+# MiniManager 2020 for CMaNGOS
+  
 MiniManager for Project MaNGOS Server is a PHP web front end to provide easy access to Mangos server management side.  
 Manage/add/remove/edit/lock/ban/ect. User accounts/characters, manage DB and server itself.  
 The project was originally designed by the minimanager team @ http://mangos.osh.nu, last updated in 2010.  
@@ -11,19 +10,19 @@ CMaNGOS project.
   
 ![Front Page](https://i.imgur.com/z3zLacQ.png)  
 
-##Features (Planned)
+## Features (Planned)
   
     Manage / add / remove / edit / lock / ban / ect (In progress)  
     User accounts / characters management (In Progress)  
     Database Management (In Progress)  
     Server Management (in Progress)  
 
-##Features (Working)  
-	Welcome page (Index)  
-	User Registration and account creation in the realmd database  
-	User Login  
+## Features (Working)  
+    Welcome page (Index)  
+    User Registration and account creation in the realmd database  
+    User Login  
 	
-##Screen captures
+## Screen captures  
 
 ![Front Page](https://i.imgur.com/z3zLacQ.png) 
 ![Registration](https://i.imgur.com/H1XXm06.png)  
@@ -31,13 +30,13 @@ CMaNGOS project.
 ![Proof of Concept](https://i.imgur.com/lLE7ZTp.png) 
 
 
-##MiniManager 2020 Prerequisites:  
+## MiniManager 2020 Prerequisites:  
 1 - Apache webserver   
 2 - PHP 7.3+  
 3 - MariaDB  
 4 - Composer - Dependency Manager for PHP  
   
-##Installation Guide
+## Installation Guide  
 This project has been tested on a server running Debian 10.3.  You may need to modify these prereq's to suit your installation,  
 however we will not cover installation of the items listed above.  
 
