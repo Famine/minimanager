@@ -38,6 +38,10 @@ $result = $sqlr->query('SELECT id, gmlevel, username FROM account WHERE username
 
 if ($verifierFromDatabase === $verifier) 
 {
+	$id_DB = $sqlr->result($sqlr->query('SELECT id, FROM account WHERE username = \''.$user_name.'\' AND v = \''.$verifier.'\''));
+	$gmlevel_DB = $sqlr->result($sqlr->query('SELECT gmlevel FROM account WHERE username = \''.$user_name.'\' AND v = \''.$verifier.'\''));
+	$user_name_DB = $sqlr->result($sqlr->query('SELECT username FROM account WHERE username = \''.$user_name.'\' AND v = \''.$verifier.'\''));
+
 	$id = $sqlr->result($result, 0, 'id');
 	if ($sqlr->result($sqlr->query('SELECT count(*) FROM account_banned WHERE id = '.$id.' AND active = \'1\''), 0))
 	{
@@ -47,10 +51,10 @@ if ($verifierFromDatabase === $verifier)
 	{
 		$_SESSION['user_id']   = $id;
 		$_SESSION['uname']     = $user_name;
-		if (($sqlr->result($result, 0, 'gmlevel')) == null)
-		$_SESSION['user_lvl']  = 0;
-		else
-		$_SESSION['user_lvl']  = $sqlr->result($result, 0, 'gmlevel');
+		//if (($sqlr->result($result, 0, 'gmlevel')) == null)
+		//$_SESSION['user_lvl']  = 0;
+		//else
+		$_SESSION['user_lvl']  = $gmlevel_DB;
 		$_SESSION['realm_id']  = $sqlr->quote_smart($_POST['realm']);
 		$_SESSION['client_ip'] = (isset($_SERVER['REMOTE_ADDR']) ) ? $_SERVER['REMOTE_ADDR'] : getenv('REMOTE_ADDR');
 		$_SESSION['logged_in'] = true;
@@ -171,6 +175,9 @@ $user_name = $sqlr->quote_smart($_COOKIE['uname']);
 $user_pass = $sqlr->quote_smart($_COOKIE['p_hash']);
 
 $result = $sqlr->query('SELECT id, gmlevel, username FROM account WHERE username = \''.$user_name.'\' AND v = \''.$user_pass.'\'');
+	$id_DB = $sqlr->result($sqlr->query('SELECT id, FROM account WHERE username = \''.$user_name.'\' AND v = \''.$user_pass.'\''));
+	$gmlevel_DB = $sqlr->result($sqlr->query('SELECT gmlevel FROM account WHERE username = \''.$user_name.'\' AND v = \''.$user_pass.'\''));
+	$user_name_DB = $sqlr->result($sqlr->query('SELECT username FROM account WHERE username = \''.$user_name.'\' AND v = \''.$user_pass.'\''));
 
 
 
@@ -185,10 +192,10 @@ if ($sqlr->num_rows($result))
 	{
 	$_SESSION['user_id']   = $id;
 	$_SESSION['uname']     = $user_name;
-	if (($sqlr->result($result, 0, 'gmlevel')) == null)
-	$_SESSION['user_lvl']  = 0;
-	else
-	$_SESSION['user_lvl']  = $sqlr->result($result, 0, 'gmlevel');
+	//if (($sqlr->result($result, 0, 'gmlevel')) == null)
+	//$_SESSION['user_lvl']  = 0;
+	//else
+	$_SESSION['user_lvl']  = $gmlevel_DB;
 	$_SESSION['realm_id']  = $sqlr->quote_smart($_COOKIE['realm_id']);
 	$_SESSION['client_ip'] = (isset($_SERVER['REMOTE_ADDR']) ) ? $_SERVER['REMOTE_ADDR'] : getenv('REMOTE_ADDR');
 	$_SESSION['logged_in'] = true;
